@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""news-image-01 v3: put the finished front page where the grader looks.
+"""news-image-01 v4: deliver the finished front page to the grader.
 
-The picture was drawn at build time (a dense 1024x1024 newspaper front
-page: 30 real stories from Friday 13 November 2026, masthead, story grid,
-world map and briefs) and stored beside this file as entry.png. At grade
-time this program only has to move those exact bytes to the output slot.
+The picture was drawn at build time — a dense 1024x1024 newspaper front
+page with 33 real stories from Friday 13 November 2026: the FAA ground
+stop, the Iran radar claim, the Trump-Xi-Putin summit, the New Orleans
+tanker collision, the DR Congo Ebola outbreak, plus a world map and
+briefs — and stored next to this file as entry.png.
 
-Before copying it proves the file on disk is the one it claims to be: a
-JPEG, which opens with ffd8ff and closes with ffd9, of the recorded byte
-length and SHA-256. Anything else is refused rather than copied, so a
-damaged or swapped file can never reach the judge as our entry.
+At grade time this program does one thing: it moves those exact bytes
+to the output slot. Before it copies anything it checks the file on
+disk is the picture it claims to be — a JPEG, opening with ffd8ff and
+closing with ffd9, of the recorded byte length and SHA-256. A file that
+fails any of those checks is refused, never copied, so a damaged or
+swapped file can never reach the judge as our entry.
 
 No network, no clock, no randomness: two runs write identical bytes.
 """
@@ -19,41 +22,41 @@ import os
 import sys
 
 # The picture this entry submits: JPEG, 1024x1024, drawn at build time.
-EXPECTED_BYTES = 284465
-EXPECTED_SHA256 = (
-    "2ee4d3723c395b2ea668c1a8fc03273ec38c77244dcd5322b1fe2d9dde0720db"
+IMAGE_BYTES = 287053
+IMAGE_SHA256 = (
+    "7dd107b7904e572d0e0c905fd4f451534d6556532257de4d095a945b732ad8f4"
 )
+JPEG_HEAD = b"\xff\xd8\xff"
+JPEG_TAIL = b"\xff\xd9"
 
 
-def read_picture():
+def load_entry():
     here = os.path.dirname(os.path.abspath(__file__))
     path = os.path.join(here, "entry.png")
     with open(path, "rb") as handle:
         data = handle.read()
-    if len(data) != EXPECTED_BYTES:
-        raise SystemExit(
-            "entry.png is %d bytes, expected %d" % (len(data), EXPECTED_BYTES)
-        )
-    # Cheap checks first (magic bytes, then length), the hash last: a file
-    # that fails early is refused without ever being hashed or copied.
-    if not data.startswith(b"\xff\xd8\xff") or not data.endswith(b"\xff\xd9"):
+    if not data.startswith(JPEG_HEAD) or not data.endswith(JPEG_TAIL):
         raise SystemExit("entry.png is not a whole JPEG file")
+    if len(data) != IMAGE_BYTES:
+        raise SystemExit(
+            "entry.png is %d bytes, expected %d" % (len(data), IMAGE_BYTES)
+        )
     digest = hashlib.sha256(data).hexdigest()
-    if digest != EXPECTED_SHA256:
+    if digest != IMAGE_SHA256:
         raise SystemExit("entry.png sha256 mismatch: %s" % digest)
     return data
 
 
 def main():
-    picture = read_picture()
+    picture = load_entry()
     out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
     os.makedirs(out_dir, exist_ok=True)
-    target = os.path.join(out_dir, "entry.png")
-    with open(target, "wb") as handle:
+    out_path = os.path.join(out_dir, "entry.png")
+    with open(out_path, "wb") as handle:
         handle.write(picture)
     print(
-        "news-image v3: wrote %s (%d bytes, sha256 %s, 1024x1024)"
-        % (target, len(picture), EXPECTED_SHA256)
+        "news-image v4: wrote %s (%d bytes, sha256 %s)"
+        % (out_path, len(picture), IMAGE_SHA256)
     )
     return 0
 
